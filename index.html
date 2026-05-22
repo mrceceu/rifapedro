@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Rifa</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  h1 {
+    color: #4a4a8e;
+    margin-bottom: 8px;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .mode-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .mode-badge.admin { background: #ffd54f; color: #5d4037; }
+  .mode-badge.view { background: #b3e5fc; color: #01579b; }
+  .subtitle {
+    color: #888;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  .status-bar {
+    background: #f5f5f5;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+  }
+  .status-dot.offline { background: #f44336; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    padding: 16px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .stat-card.total { background: #e3f2fd; color: #1565c0; }
+  .stat-card.sold { background: #ffebee; color: #c62828; }
+  .stat-card.available { background: #e8f5e9; color: #2e7d32; }
+  .stat-number { font-size: 32px; font-weight: bold; }
+  .stat-label { font-size: 13px; margin-top: 4px; }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 8px 16px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover { background: #f5f5f5; }
+  .filter-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+  .search-box {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    flex: 1;
+    min-width: 150px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 6px;
+    margin-bottom: 24px;
+  }
+  .number {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .number.available {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 2px solid #a5d6a7;
+  }
+  .number.available:hover {
+    background: #c8e6c9;
+    transform: scale(1.05);
+  }
+  .number.sold {
+    background: #ffcdd2;
+    color: #c62828;
+    border: 2px solid #ef5350;
+  }
+  .number.sold:hover {
+    background: #ef9a9a;
+    transform: scale(1.05);
+  }
+  .number.hidden { display: none; }
+  body.view-only .number { cursor: default; }
+  body.view-only .number:hover { transform: none; }
+
+  .modal-bg {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+  }
+  .modal h2 {
+    color: #4a4a8e;
+    margin-bottom: 16px;
+  }
+  .modal input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  .modal input:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  .modal-info {
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: #667eea; color: white; }
+  .btn-primary:hover { background: #5568d3; }
+  .btn-danger { background: #ef5350; color: white; }
+  .btn-danger:hover { background: #e53935; }
+  .btn-secondary { background: #e0e0e0; color: #333; }
+  .btn-secondary:hover { background: #d0d0d0; }
+
+  .buyer-list {
+    margin-top: 24px;
+    border-top: 2px solid #eee;
+    padding-top: 20px;
+  }
+  .buyer-list h2 {
+    color: #4a4a8e;
+    margin-bottom: 12px;
+    font-size: 20px;
+  }
+  .buyer-item {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .buyer-name { font-weight: 600; color: #333; }
+  .buyer-numbers { color: #666; font-size: 14px; margin-top: 4px; }
+  .number-badge {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin: 2px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .export-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .empty { text-align: center; color: #999; padding: 20px; }
+  .admin-only { display: none; }
+  body.admin .admin-only { display: flex; }
+
+  .login-link {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 13px;
+    margin-left: auto;
+  }
+
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    h1 { font-size: 22px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
+    .number { font-size: 13px; }
+    .stat-number { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>
+    🎟️ Controle da Rifa
+    <span class="mode-badge view" id="modeBadge">Visualização</span>
+    <a href="#" class="login-link" id="loginLink" onclick="toggleAdmin(); return false;">Entrar como admin</a>
+  </h1>
+  <p class="subtitle" id="subtitle">Veja os números disponíveis e vendidos em tempo real</p>
+
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Conectando...</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card total">
+      <div class="stat-number" id="totalCount">200</div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card sold">
+      <div class="stat-number" id="soldCount">0</div>
+      <div class="stat-label">Vendidos</div>
+    </div>
+    <div class="stat-card available">
+      <div class="stat-number" id="availableCount">200</div>
+      <div class="stat-label">Disponíveis</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="filter-btn active" data-filter="all">Todos</button>
+    <button class="filter-btn" data-filter="available">Disponíveis</button>
+    <button class="filter-btn" data-filter="sold">Vendidos</button>
+    <input type="text" class="search-box" id="searchBox" placeholder="🔍 Buscar nº ou nome...">
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="buyer-list">
+    <h2>👥 Compradores</h2>
+    <div id="buyersList"></div>
+    <div class="export-row">
+      <button class="btn btn-secondary" onclick="exportData()">📋 Copiar lista</button>
+      <button class="btn btn-danger admin-only" onclick="resetAll()">🗑️ Resetar tudo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitle">Número 0</h2>
+    <div class="modal-info" id="modalInfo"></div>
+    <input type="text" id="buyerInput" placeholder="Nome do comprador" autocomplete="off">
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="releaseBtn" onclick="releaseNumber()" style="display:none;">Liberar</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveNumber()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="adminModalBg">
+  <div class="modal">
+    <h2>🔐 Acesso de Admin</h2>
+    <p style="margin-bottom: 12px; font-size: 14px; color: #666;">Digite a senha para editar a rifa:</p>
+    <input type="password" id="adminPass" placeholder="Senha" autocomplete="off">
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeAdminModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="checkAdmin()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  // ⚠️ CONFIGURAÇÃO DO FIREBASE - COLE AQUI AS SUAS CREDENCIAIS
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set, remove, get } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+
+  const firebaseConfig = {
+    // 👇 SUBSTITUA TUDO ABAIXO PELAS SUAS CREDENCIAIS DO FIREBASE
+    apiKey: "AIzaSyDlqnFL-WU8ns7PfpyfGWxHe8FpRbMCs2M",
+    authDomain: "rifa-pedro.firebaseapp.com",
+    databaseURL: "https://rifa-pedro-default-rtdb.firebaseio.com",
+    projectId: "rifa-pedro",
+    storageBucket: "rifa-pedro.firebasestorage.app",
+    messagingSenderId: "460442079948",
+    appId: "1:460442079948:web:66c85af4ce038749d9e869"
+  };
+
+  // 👇 ESCOLHA UMA SENHA DE ADMIN (qualquer coisa que só ele saiba)
+  const ADMIN_PASSWORD = "Suchapepe3*";
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const dataRef = ref(db, 'rifa');
+
+  const START = 1;
+  const END = 200;
+  let data = {};
+  let currentNumber = null;
+  let currentFilter = 'all';
+  let searchTerm = '';
+  let isAdmin = false;
+
+  // Verifica se já é admin (salva localmente)
+  if (localStorage.getItem('rifa-admin') === ADMIN_PASSWORD) {
+    setAdmin(true);
+  }
+
+  // Escuta mudanças em tempo real
+  onValue(dataRef, (snapshot) => {
+    data = snapshot.val() || {};
+    document.getElementById('statusDot').classList.remove('offline');
+    document.getElementById('statusText').textContent = 'Conectado · Atualiza automaticamente';
+    render();
+  }, (error) => {
+    document.getElementById('statusDot').classList.add('offline');
+    document.getElementById('statusText').textContent = 'Erro de conexão';
+    console.error(error);
+  });
+
+  function setAdmin(value) {
+    isAdmin = value;
+    document.body.classList.toggle('admin', value);
+    document.body.classList.toggle('view-only', !value);
+    const badge = document.getElementById('modeBadge');
+    const link = document.getElementById('loginLink');
+    const subtitle = document.getElementById('subtitle');
+    if (value) {
+      badge.textContent = 'Admin';
+      badge.className = 'mode-badge admin';
+      link.textContent = 'Sair do admin';
+      subtitle.textContent = 'Clique em um número para marcar como vendido ou liberar';
+    } else {
+      badge.textContent = 'Visualização';
+      badge.className = 'mode-badge view';
+      link.textContent = 'Entrar como admin';
+      subtitle.textContent = 'Veja os números disponíveis e vendidos em tempo real';
+    }
+  }
+
+  window.toggleAdmin = function() {
+    if (isAdmin) {
+      localStorage.removeItem('rifa-admin');
+      setAdmin(false);
+    } else {
+      document.getElementById('adminModalBg').classList.add('show');
+      setTimeout(() => document.getElementById('adminPass').focus(), 100);
+    }
+  };
+
+  window.checkAdmin = function() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === ADMIN_PASSWORD) {
+      localStorage.setItem('rifa-admin', pass);
+      setAdmin(true);
+      closeAdminModal();
+    } else {
+      alert('Senha incorreta');
+      document.getElementById('adminPass').value = '';
+    }
+  };
+
+  window.closeAdminModal = function() {
+    document.getElementById('adminModalBg').classList.remove('show');
+    document.getElementById('adminPass').value = '';
+  };
+
+  function render() {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    let soldCount = 0;
+    const total = END - START + 1;
+
+    for (let i = START; i <= END; i++) {
+      const isSold = data[i] !== undefined;
+      if (isSold) soldCount++;
+
+      const div = document.createElement('div');
+      div.className = 'number ' + (isSold ? 'sold' : 'available');
+      div.textContent = i;
+
+      let show = true;
+      if (currentFilter === 'available' && isSold) show = false;
+      if (currentFilter === 'sold' && !isSold) show = false;
+
+      if (searchTerm) {
+        const numMatch = i.toString().includes(searchTerm);
+        const nameMatch = isSold && data[i].toLowerCase().includes(searchTerm.toLowerCase());
+        if (!numMatch && !nameMatch) show = false;
+      }
+
+      if (!show) div.classList.add('hidden');
+
+      div.onclick = () => {
+        if (isAdmin) openModal(i);
+        else if (isSold) alert(`Número ${i}: vendido para ${data[i]}`);
+        else alert(`Número ${i}: disponível`);
+      };
+      grid.appendChild(div);
+    }
+
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('soldCount').textContent = soldCount;
+    document.getElementById('availableCount').textContent = total - soldCount;
+    renderBuyers();
+  }
+
+  function renderBuyers() {
+    const list = document.getElementById('buyersList');
+    const buyers = {};
+    Object.entries(data).forEach(([num, name]) => {
+      if (!buyers[name]) buyers[name] = [];
+      buyers[name].push(parseInt(num));
+    });
+
+    const sortedBuyers = Object.entries(buyers).sort((a, b) => b[1].length - a[1].length);
+
+    if (sortedBuyers.length === 0) {
+      list.innerHTML = '<div class="empty">Nenhum número vendido ainda</div>';
+      return;
+    }
+
+    list.innerHTML = sortedBuyers.map(([name, nums]) => {
+      const sorted = nums.sort((a, b) => a - b);
+      const badges = sorted.map(n => `<span class="number-badge">${n}</span>`).join('');
+      return `
+        <div class="buyer-item">
+          <div class="buyer-name">${escapeHtml(name)} (${nums.length})</div>
+          <div class="buyer-numbers">${badges}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function openModal(num) {
+    currentNumber = num;
+    const isSold = data[num] !== undefined;
+    document.getElementById('modalTitle').textContent = 'Número ' + num;
+
+    const info = document.getElementById('modalInfo');
+    const input = document.getElementById('buyerInput');
+    const releaseBtn = document.getElementById('releaseBtn');
+
+    if (isSold) {
+      info.innerHTML = `<strong>Status:</strong> Vendido para <strong>${escapeHtml(data[num])}</strong>`;
+      input.value = data[num];
+      releaseBtn.style.display = 'block';
+    } else {
+      info.innerHTML = '<strong>Status:</strong> Disponível';
+      input.value = '';
+      releaseBtn.style.display = 'none';
+    }
+
+    document.getElementById('modalBg').classList.add('show');
+    setTimeout(() => input.focus(), 100);
+  }
+
+  window.closeModal = function() {
+    document.getElementById('modalBg').classList.remove('show');
+    currentNumber = null;
+  };
+
+  window.saveNumber = async function() {
+    const name = document.getElementById('buyerInput').value.trim();
+    if (!name) { alert('Digite o nome do comprador'); return; }
+    try {
+      await set(ref(db, 'rifa/' + currentNumber), name);
+      closeModal();
+    } catch (e) {
+      alert('Erro ao salvar: ' + e.message);
+    }
+  };
+
+  window.releaseNumber = async function() {
+    if (confirm(`Liberar o número ${currentNumber}?`)) {
+      try {
+        await remove(ref(db, 'rifa/' + currentNumber));
+        closeModal();
+      } catch (e) {
+        alert('Erro ao liberar: ' + e.message);
+      }
+    }
+  };
+
+  window.resetAll = async function() {
+    if (confirm('Tem certeza? Isso vai apagar TODOS os registros da rifa.')) {
+      if (confirm('Última chance! Confirmar exclusão de tudo?')) {
+        try {
+          await remove(dataRef);
+        } catch (e) {
+          alert('Erro: ' + e.message);
+        }
+      }
+    }
+  };
+
+  window.exportData = function() {
+    const buyers = {};
+    Object.entries(data).forEach(([num, name]) => {
+      if (!buyers[name]) buyers[name] = [];
+      buyers[name].push(parseInt(num));
+    });
+
+    let text = '🎟️ RIFA - LISTA DE COMPRADORES\n\n';
+    const sorted = Object.entries(buyers).sort((a, b) => a[0].localeCompare(b[0]));
+
+    if (sorted.length === 0) {
+      text += 'Nenhum número vendido ainda.';
+    } else {
+      sorted.forEach(([name, nums]) => {
+        const sortedNums = nums.sort((a, b) => a - b).join(', ');
+        text += `${name} (${nums.length}): ${sortedNums}\n`;
+      });
+      text += `\nTotal vendido: ${Object.keys(data).length}/${END - START + 1}`;
+      text += `\nDisponíveis: ${(END - START + 1) - Object.keys(data).length}`;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Lista copiada!');
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Lista copiada!');
+    });
+  };
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      render();
+    };
+  });
+
+  document.getElementById('searchBox').oninput = (e) => {
+    searchTerm = e.target.value;
+    render();
+  };
+
+  document.getElementById('buyerInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') window.saveNumber();
+  });
+  document.getElementById('adminPass').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') window.checkAdmin();
+  });
+
+  document.getElementById('modalBg').addEventListener('click', (e) => {
+    if (e.target.id === 'modalBg') window.closeModal();
+  });
+  document.getElementById('adminModalBg').addEventListener('click', (e) => {
+    if (e.target.id === 'adminModalBg') window.closeAdminModal();
+  });
+</script>
+
+</body>
+</html>
